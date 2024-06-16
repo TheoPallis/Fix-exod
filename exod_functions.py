@@ -5,7 +5,7 @@ from odf.opendocument import load
 from odf.text import P
 from odf.element import Element
 from docx.opc.exceptions import PackageNotFoundError
-from codes.exod_ds import reg_amount, reg_contract, global_errors, contents_dict, non_found, error_counter, production_dir, first_level_folders, errors, non_docs, non_word_document_types,errors_dict
+from codes.exod_ds import reg_amount,production_dir, non_docs,errors_dict
 from collections import defaultdict
 #pip install odfpy
 #pip install python-docx
@@ -23,7 +23,19 @@ def extract_amount(current_doc_string, reg_amount):
         return clean_amount(amount_string)
     else :
         return "None"
-            
+
+
+def append_amount_to_dict(r,file,) :
+    base_r = os.path.basename(r)
+    current_doc = docx.Document(os.path.join(r, file))
+    paragraph_text_list = [p.text for p in list(current_doc.paragraphs)]               
+    current_doc_string = ''.join(str(x) for x in  paragraph_text_list)     
+    amount = extract_amount(current_doc_string,reg_amount)
+    # print(f"                         {amount}")
+    # amounts_dict[main_folder][0].append(amount)
+    # amounts_dict[main_folder][1].append(base_r)
+
+     
 # Functions to merge, indent, find non word files
 
 def indent_item(item, main_folder, num=None):
@@ -42,16 +54,26 @@ def read_document(r, file):
     elif file.endswith(".odt") or file.endswith(".odf"):
         return load(os.path.join(r, file))
 
-def find_non_word_document_types(file, non_word_document_types, non_docs):
-    for extension in non_word_document_types:
-        if not file.endswith(extension):
-            non_docs.append(file)
+def find_non_word_document_types(file, non_docs):
+    extension = str(file).split('.')[1]
+    non_docs[extension].append(file)
 
+def catch_errors(e,r,file,errors_dict,main_folder) :
+    base_r = os.path.basename(r)
+    full_file = os.path.join(r, file)
+    error_message = (str(e), full_file)
+    errors_dict[main_folder][0].append(base_r)
+    errors_dict[main_folder][1].append(file)
+    errors_dict[main_folder][2].append(error_message)
+    errors_dict[main_folder][3].append(full_file)
+    
 def merged_document(r, file, merged_doc):
     if file.endswith(".docx") or file.endswith(".doc"):
         doc = docx.Document(os.path.join(r, file))
-        for paragraph in doc.paragraphs:
+        print(f"                Readed doc for {file} done")
+        for i,paragraph in enumerate(doc.paragraphs):
             merged_doc.add_paragraph(paragraph.text)
+            print(f"                    Paragraph {i+1} added")
     elif file.endswith(".odt") or file.endswith(".odf"):
         doc = load(os.path.join(r, file))
         for paragraph in doc.getElementsByType(P):
@@ -62,31 +84,17 @@ def read_all_files(files,r,main_folder,merged_doc,amounts_dict) :
     for k, file in enumerate(files):
         if file.endswith((".docx", ".doc", ".odt", ".odf")):
             try:
+                indent_item(file, r, k)
                 # Merge to total
                 merged_document(r, file, merged_doc)
-                doc = read_document(r, file)
+                print (f"           Merged document done")
+                # doc = read_document(r, file)
                 # Append amount
-                base_r = os.path.basename(r)
-                current_doc = docx.Document(os.path.join(r, file))
-                paragraph_text_list = [p.text for p in list(current_doc.paragraphs)]               
-                current_doc_string = ''.join(str(x) for x in  paragraph_text_list)     
-                amount = extract_amount(current_doc_string,reg_amount)
-                print(f"                         {amount}")
-                amounts_dict[main_folder][0].append(amount)
-                amounts_dict[main_folder][1].append(base_r)
-   
-          
+                append_amount_to_dict(r,file,)
             except Exception as e:
-                base_r = os.path.basename(r)
-                full_file = os.path.join(r, file)
-                error_message = (str(e), full_file)
-                errors_dict[main_folder][0].append(base_r)
-                errors_dict[main_folder][1].append(file)
-                errors_dict[main_folder][2].append(error_message)
-                errors_dict[main_folder][3].append(full_file)
-
-                
-            find_non_word_document_types(file, non_word_document_types, non_docs)
+                 catch_errors(e,r,file,errors_dict,main_folder) 
+        else :
+            find_non_word_document_types(file, non_docs)
 
     return errors_dict,amounts_dict[main_folder],non_docs
 

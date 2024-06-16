@@ -11,8 +11,8 @@ error_counter = 0
 production_dir = r"C:\Users\pallist\Desktop\ΤΡΕΧΟΝΤΑ\1) Projects\Fix exodika\PRODUCTION - 11_6_ bup"
 first_level_folders = [folder for folder in next(os.walk(production_dir))[1]]
 errors = []
-non_docs= []
-non_word_document_types = ['docx','doc','odt','odf','xls', 'xlsx', 'db', 'pdf','ink','tmp','lnk']
+
+non_docs= defaultdict(lambda: [])
 
 
 def create_lists(n):
